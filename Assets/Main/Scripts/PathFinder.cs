@@ -1,9 +1,5 @@
-﻿using HarmonyLib;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Security.Policy;
-using UnityEngine;
 
 public class PathFinder {
 
@@ -51,7 +47,6 @@ public class PathFinder {
                 }
 
                 vistedStates.Add(neighbor);
-                queue.Enqueue(neighbor);
                 queue.Enqueue(neighbor);
             }
         }

@@ -1,8 +1,5 @@
-﻿using HarmonyLib;
-using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -171,14 +168,16 @@ public class Main : MonoBehaviour
     void GenerateDebugMaze()
     {
 
+        
         int[,] grid = new int[,]
         {
-           {(int)Tile.Red,(int)Tile.Green ,(int)Tile.Blue ,(int)Tile.Yellow ,(int)Tile.Yellow ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Pink },
-            {(int)Tile.Blue,(int)Tile.Orange ,(int)Tile.Green ,(int)Tile.Pink ,(int)Tile.Green ,(int)Tile.Purple ,(int)Tile.Orange ,(int)Tile.Red },
-            {(int)Tile.Red,(int)Tile.Purple ,(int)Tile.Purple ,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Orange ,(int)Tile.Pink ,(int)Tile.Red },
-            {(int)Tile.Orange,(int)Tile.Green ,(int)Tile.Yellow ,(int)Tile.Red ,(int)Tile.Red ,(int)Tile.Red ,(int)Tile.Yellow ,(int)Tile.Blue },
-            {(int)Tile.Yellow,(int)Tile.Pink ,(int)Tile.Yellow ,(int)Tile.Red ,(int)Tile.Yellow ,(int)Tile.Purple ,(int)Tile.Red ,(int)Tile.Red },
-            {(int)Tile.Pink,(int)Tile.Green ,(int)Tile.Red ,(int)Tile.Blue ,(int)Tile.Red ,(int)Tile.Orange ,(int)Tile.Pink ,(int)Tile.Red },
+       {(int)Tile.Pink,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Pink ,(int)Tile.Blue ,(int)Tile.Pink },
+        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Red ,(int)Tile.Orange ,(int)Tile.Green ,(int)Tile.Pink ,(int)Tile.Green },
+        {(int)Tile.Green,(int)Tile.Blue , (int)Tile.Green, (int)Tile.Red ,(int)Tile.Orange ,(int)Tile.Pink ,(int)Tile.Green ,(int)Tile.Blue },
+        {(int)Tile.Green,(int)Tile.Green ,(int)Tile.Purple ,(int)Tile.Green ,(int)Tile.Orange ,(int)Tile.Purple ,(int)Tile.Blue ,(int)Tile.Green },
+        {(int)Tile.Red,(int)Tile.Blue ,(int)Tile.Red ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Green ,(int)Tile.Pink ,(int)Tile.Pink },
+        {(int)Tile.Red,(int)Tile.Green ,(int)Tile.Blue ,(int)Tile.Orange ,(int)Tile.Orange ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Orange },
+
         };
 
         /*
@@ -1023,6 +1022,7 @@ public class Main : MonoBehaviour
     {
         yield return null;
 
+
         Command = Command.ToUpper();
 
         if (Command == "RESET")
@@ -1056,6 +1056,7 @@ public class Main : MonoBehaviour
 
 
 
+
             KMSelectable button = buttons[row * 8 + col].gameObject.GetComponent<KMSelectable>();
             Cell cell = GetCell(button);
             Cell playerCell = FindPlayer();
@@ -1065,6 +1066,13 @@ public class Main : MonoBehaviour
             {
                 yield return $"sendtochaterror Your first command does not start in the first column. Given: `{command.Join("")}`";
                 yield break;
+            }
+
+
+            //if you specifc a cell, and you're on said cell, move on
+            if (playerCell == cell)
+            { 
+                continue;
             }
 
             if (cell.Tile == Tile.Red)
