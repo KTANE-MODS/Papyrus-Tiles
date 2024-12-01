@@ -17,4 +17,5 @@ public enum Tile
     Blue,
     Purple,
     Pink,
+    Yellow,
 }

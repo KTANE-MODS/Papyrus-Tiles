@@ -8,11 +8,8 @@ using Rnd = UnityEngine.Random;
 
 public class Main : MonoBehaviour
 {
-    //todo tp x
-    //todo autosolve x
-    //todo colorblind
-
-    
+    [SerializeField]
+    private bool debug;
 
     private KMAudio Audio;
 
@@ -30,7 +27,7 @@ public class Main : MonoBehaviour
     private Animator animator;
 
     [SerializeField]
-    private Material[] materials; // red, orange, green, blue, purple, pink
+    private Color32[] colors; // red, orange, green, blue, purple, pink, yellow
 
     [SerializeField]
     private GameObject orange;
@@ -64,7 +61,7 @@ public class Main : MonoBehaviour
     private RectTransform rectTransform;
 
     [SerializeField]
-    private AudioClip[] audioClips; //knife, encounter 1, encounter 2, love, hit, walk, victory, chomp
+    private AudioClip[] audioClips; //knife, encounter 1, encounter 2, love, hit, walk, victory, chomp, zap
 
     private KMSelectable resetButton;
 
@@ -82,7 +79,7 @@ public class Main : MonoBehaviour
     static int ModuleIdCounter = 1;
     private int ModuleId;
     private bool ModuleSolved;
-    private bool debug = false;
+    
     private bool pressable;
     private bool fightingMonster;
     private float monsterHealth;
@@ -116,12 +113,13 @@ public class Main : MonoBehaviour
         resetButton.OnInteract += delegate () { if (pressable && !fightingMonster && !ModuleSolved) { resetButton.AddInteractionPunch(.1f); ResetModule(); } return false; };
 
 
-        Cell.red = materials[0].color;
-        Cell.orange = materials[1].color;
-        Cell.green = materials[2].color;
-        Cell.blue = materials[3].color;
-        Cell.purple = materials[4].color;
-        Cell.pink = materials[5].color;
+        Cell.red = colors[0];
+        Cell.orange = colors[1];
+        Cell.green = colors[2];
+        Cell.blue = colors[3];
+        Cell.purple = colors[4];
+        Cell.pink = colors[5];
+        Cell.yellow = colors[6];
 
         GetComponent<KMSelectable>().OnFocus += delegate () { focused = true; };
         GetComponent<KMSelectable>().OnDefocus += delegate () { focused = false; };
@@ -176,7 +174,7 @@ public class Main : MonoBehaviour
 
         int[,] grid = new int[,]
        {
-        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Orange ,(int)Tile.Red ,(int)Tile.Pink ,(int)Tile.Blue },
+        {(int)Tile.Pink,(int)Tile.Purple ,(int)Tile.Yellow ,(int)Tile.Yellow,(int)Tile.Orange ,(int)Tile.Red ,(int)Tile.Pink ,(int)Tile.Blue },
         {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Purple ,(int)Tile.Pink ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Blue },
         {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Green ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Purple ,(int)Tile.Orange },
         {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Red ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Green },
@@ -875,6 +873,26 @@ public class Main : MonoBehaviour
                     yield break;
                 }
 
+                if (selectedCell.Tile == Tile.Yellow)
+                {
+                    yield return HandleYellow(playerCell, selectedCell);
+                    pressable = true;
+                    yield break;
+                }
+
+                if (HasYellowNeigbors(selectedCell))
+                {
+                    if (colorBlindOn)
+                    {
+                        selectedCell.SetColorBlindTextMeshVisisbilty(false);
+                    }
+
+                    yield return SetPlayer(selectedCell, true, walkingTime);
+                    yield return HandleYellow(playerCell, selectedCell);
+                    pressable = true;
+                    yield break;
+                }
+
                 if (selectedCell.Tile == Tile.Orange)
                 {
                     SetSmell(Smell.Orange);
@@ -891,7 +909,7 @@ public class Main : MonoBehaviour
 
                 if (selectedCell.Tile == Tile.Green)
                 {
-                    yield return HandleGreenTiles();
+                    yield return HandleGreenTile();
                 }
                 pressable = true;
             }
@@ -909,130 +927,198 @@ public class Main : MonoBehaviour
                 yield break;
             }
 
-            else
+            
+            if (selectedCell.Tile == Tile.Red)
             {
-                if (selectedCell.Tile == Tile.Red)
-                {
-                    pressable = true;
-                    yield break;
-                }
+                pressable = true;
+                yield break;
+            }
 
-                if (colorBlindOn)
-                {
-                    playerCell.SetColorBlindTextMeshVisisbilty(true);
-                }
+            if (colorBlindOn)
+            {
+                playerCell.SetColorBlindTextMeshVisisbilty(true);
+            }
 
-                Logging("Pressed " + selectedCell.ToString());
+            Logging("Pressed " + selectedCell.ToString());
 
-                switch (selectedCell.Tile)
-                {
-                    case Tile.Orange:
-                        SetSmell(Smell.Orange);
-                        break;
-                    case Tile.Blue:
-                        if (currentSmell == Smell.Orange)
-                        {
-                            if (colorBlindOn)
-                            {
-                                selectedCell.SetColorBlindTextMeshVisisbilty(false);
-                            }
+            switch (selectedCell.Tile)
+            {
+                case Tile.Orange:
+                    SetSmell(Smell.Orange);
+                    break;
 
-                            yield return SetPlayer(selectedCell, false, walkingTime);
-                            //todo have a chomping noise play
-                            Audio.PlaySoundAtTransform(audioClips[7].name, transform);
-                            Strike("Strike! Got bit by pirahnas. Moving back to " + playerCell.ToString());
-                            yield return SetPlayer(playerCell, false, runningTime);
-
-                            if (colorBlindOn)
-                            {
-                                playerCell.SetColorBlindTextMeshVisisbilty(false);
-                                selectedCell.SetColorBlindTextMeshVisisbilty(true);
-                            }
-                            
-                            pressable = true;
-                            yield break;
-                        }
-                        break;
-                    case Tile.Purple:
-
-                        string direction = GetDirection(playerCell, selectedCell);
-                        Cell currentCell = playerCell;
-
-                        do
-                        {
-                            Cell nextCell = GetNewCellViaDirection(currentCell, direction);
-
-                            if (colorBlindOn)
-                            {
-                                currentCell.SetColorBlindTextMeshVisisbilty(true);
-                                nextCell.SetColorBlindTextMeshVisisbilty(false);
-                            }
-
-                            yield return SetPlayer(nextCell, false, walkingTime);
-                            SetSmell(Smell.Lemon);
-                            currentCell = nextCell;
-
-                        } while (currentCell.Tile == Tile.Purple);
-
-                        Logging("Moved to " + currentCell.ToString());
-
-                        if (currentCell.Tile == Tile.Red)
-                        {
-                            Strike("Strike! Slid to a red tile.");
-                            ResetModule();
-                        }
-
-                        else if (currentCell.Tile == Tile.Orange)
-                        {
-                            SetSmell(Smell.Orange);
-                        }
-
-                        else if (currentCell.Tile == Tile.Green)
-                        {
-                            yield return HandleGreenTiles();
-                        }
-
-                        if (currentCell.Col == 7)
-                        {
-                            Solve();
-                        }
-                        pressable = true;
-                        yield break;
-
-                    case Tile.Green:
-
+                case Tile.Blue:
+                    //strike if you smell like oranges
+                    if (currentSmell == Smell.Orange)
+                    {
                         if (colorBlindOn)
-                        { 
+                        {
                             selectedCell.SetColorBlindTextMeshVisisbilty(false);
                         }
 
                         yield return SetPlayer(selectedCell, false, walkingTime);
-                        yield return HandleGreenTiles();
-                        if (FindPlayer().Col == 7)
+                        Audio.PlaySoundAtTransform(audioClips[7].name, transform);
+                        Strike("Got bit by pirahnas. Moving back to " + playerCell.ToString());
+                        yield return SetPlayer(playerCell, false, runningTime);
+
+                        if (colorBlindOn)
                         {
-                            Solve();
+                            playerCell.SetColorBlindTextMeshVisisbilty(false);
+                            selectedCell.SetColorBlindTextMeshVisisbilty(true);
                         }
+                            
                         pressable = true;
                         yield break;
-                }
+                    }
 
-                if (colorBlindOn)
-                { 
-                    selectedCell.SetColorBlindTextMeshVisisbilty(false);
-                }
+                    //strike if yellow is adjacent tile
+                    if (HasYellowNeigbors(selectedCell))
+                    {
+                        if (colorBlindOn)
+                        {
+                            selectedCell.SetColorBlindTextMeshVisisbilty(false);
+                        }
 
-                yield return SetPlayer(selectedCell, false, walkingTime);
-                pressable = true;
+                        yield return SetPlayer(selectedCell, false, walkingTime);
+                        yield return HandleYellow(playerCell, selectedCell);
+
+                        pressable = true;
+                        yield break;
+                    }
+                    break;
+
+                case Tile.Yellow:
+                    if (colorBlindOn)
+                    {
+                        selectedCell.SetColorBlindTextMeshVisisbilty(false);
+                    }
+                    yield return SetPlayer(selectedCell, false, walkingTime);
+                    yield return HandleYellow(playerCell, selectedCell);
+                    pressable = true;
+
+                    yield break;
+
+                case Tile.Purple:
+
+                    string direction = GetDirection(playerCell, selectedCell);
+                    Cell currentCell = playerCell;
+
+                    do
+                    {
+                        Cell nextCell = GetNewCellViaDirection(currentCell, direction);
+
+                        if (colorBlindOn)
+                        {
+                            currentCell.SetColorBlindTextMeshVisisbilty(true);
+                            nextCell.SetColorBlindTextMeshVisisbilty(false);
+                        }
+
+                        yield return SetPlayer(nextCell, false, walkingTime);
+                        SetSmell(Smell.Lemon);
+                        currentCell = nextCell;
+
+                    } while (currentCell.Tile == Tile.Purple);
+
+                    Logging("Moved to " + currentCell.ToString());
+
+                    if (currentCell.Tile == Tile.Red)
+                    {
+                        Strike("Slid to a red tile.");
+                        ResetModule();
+                    }
+
+                    else if (HasYellowNeigbors(currentCell))
+                    {
+                        yield return HandleYellow(playerCell, currentCell);
+                    }
+
+                    //todo check this
+                    else if (currentCell.Tile == Tile.Yellow)
+                    {
+                        yield return HandleYellow(playerCell, currentCell);
+                    }
+
+                    else if (currentCell.Tile == Tile.Orange)
+                    {
+                        SetSmell(Smell.Orange);
+                    }
+
+                    else if (currentCell.Tile == Tile.Green)
+                    {
+                        yield return HandleGreenTile();
+                    }
+
+                    if (currentCell.Col == 7)
+                    {
+                        Solve();
+                    }
+                    pressable = true;
+                    yield break;
+
+                case Tile.Green:
+
+                    if (colorBlindOn)
+                    { 
+                        selectedCell.SetColorBlindTextMeshVisisbilty(false);
+                    }
+
+                    yield return SetPlayer(selectedCell, false, walkingTime);
+                    yield return HandleGreenTile();
+                    if (FindPlayer().Col == 7)
+                    {
+                        Solve();
+                    }
+                    pressable = true;
+                    yield break;
+            }
+
+            if (colorBlindOn)
+            { 
+                selectedCell.SetColorBlindTextMeshVisisbilty(false);
+            }
+
+            yield return SetPlayer(selectedCell, false, walkingTime);
+            pressable = true;
 
 
-                if (FindPlayer().Col == 7)
-                {
-                    Solve();
-                }
+            if (FindPlayer().Col == 7)
+            {
+                Solve();
             }
         }
     }
-    IEnumerator HandleGreenTiles()
+
+    private IEnumerator HandleYellow(Cell playerCell, Cell selectedCell)
+    {
+        //if this is the first cell and the player is not on the board yet, instantly play the shock sound and strike the player 
+        if (playerCell == null && selectedCell.Col == 0)
+        {
+            //put player on cell
+            heart.SetActive(true);
+            yield return SetPlayer(selectedCell, true, 0f);
+        }
+
+        yield return null;
+
+        //play zap sound
+        AudioClip clip = audioClips[8];
+        Audio.PlaySoundAtTransform(clip.name, transform);
+        yield return new WaitForSeconds(clip.length);
+        
+        Strike("Stepped on a yellow tile");
+        
+        //reset module
+        ResetModule();
+
+        //what if the player slides on a yellow
+    }
+
+    private bool HasYellowNeigbors(Cell cell)
+    {
+        return cell.Tile == Tile.Blue && cell.Neighbors.Where(c => c != null).Any(c => c.Tile == Tile.Yellow);
+    }
+
+    IEnumerator HandleGreenTile()
     {
         fightingMonster = true;
         enemyRenderer.materials = new Material[] { enemyMaterials[Rnd.Range(0, enemyMaterials.Length)] };
@@ -1313,7 +1399,7 @@ public class Main : MonoBehaviour
             return;
         }
 
-        Debug.LogFormat($"[Papyrus Tiles #{ModuleId}] {s}");
+        Debug.Log($"[Papyrus Tiles #{ModuleId}] {s}");
             
     }
 
@@ -1328,7 +1414,7 @@ public class Main : MonoBehaviour
     private void Strike(string s)
     {
         GetComponent<KMBombModule>().HandleStrike();
-        Logging(s);
+        Logging($"Strike! {s}");
     }
 
     private void LogGrid()

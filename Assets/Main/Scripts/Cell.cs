@@ -20,8 +20,7 @@ public class Cell  {
     public static Color blue { get; set; }
     public static Color purple { get; set; }
     public static Color pink { get; set; }
-
-    private const float epsilon = 0.0001f;
+    public static Color yellow { get; set; }
 
     public Cell Up { get; set; }
     public Cell Right { get; set; }
@@ -62,7 +61,7 @@ public class Cell  {
 
     public void SetRandomTile()
     {
-        Tile = (Tile)Rnd.Range(0, 6);
+        Tile = (Tile)Rnd.Range(0, 7);
         SetColor(Tile);
     }
 
@@ -76,6 +75,7 @@ public class Cell  {
             case Tile.Purple: Button.Color = purple; break;
             case Tile.Green: Button.Color = green; break;
             case Tile.Blue: Button.Color = blue; break;
+            case Tile.Yellow: Button.Color = yellow; break;
         }
     }
 

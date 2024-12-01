@@ -10615,13 +10615,21 @@ MonoBehaviour:
   - {fileID: 114846409643913284}
   - {fileID: 114038639369877000}
   animator: {fileID: 95150498705470926}
-  materials:
-  - {fileID: 2100000, guid: ed18b3545afaec545899946a9d0bb344, type: 2}
-  - {fileID: 2100000, guid: 8cd37b1b45e7db448ba1e85f03f3a526, type: 2}
-  - {fileID: 2100000, guid: 9bceb4161f47ca344bda4000bac188a0, type: 2}
-  - {fileID: 2100000, guid: af52db2e8b9b2fd4fa9bcbfc03a1f270, type: 2}
-  - {fileID: 2100000, guid: 51b248af13366894f99f444112d63a0c, type: 2}
-  - {fileID: 2100000, guid: 306fa3602ee6cde4e965c1359a33196d, type: 2}
+  colors:
+  - serializedVersion: 2
+    rgba: 255
+  - serializedVersion: 2
+    rgba: 4278225407
+  - serializedVersion: 2
+    rgba: 4278381056
+  - serializedVersion: 2
+    rgba: 4294913024
+  - serializedVersion: 2
+    rgba: 4294901882
+  - serializedVersion: 2
+    rgba: 4294017273
+  - serializedVersion: 2
+    rgba: 65535
   orange: {fileID: 1995209438743472}
   lemon: {fileID: 1838292395697562}
   heart: {fileID: 1128751327729076}
@@ -10651,6 +10659,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: f151894e6b56a494cb1dccfa89072b56, type: 3}
   - {fileID: 8300000, guid: 5f187f928dd1e3f4f8814656be671cd3, type: 3}
   - {fileID: 8300000, guid: 1a43fadd01c0057449e9c59138c0c56c, type: 3}
+  - {fileID: 8300000, guid: db9c931b7f9a59842b6ef93b0f550bfd, type: 3}
 --- !u!114 &114465326380865402
 MonoBehaviour:
   m_ObjectHideFlags: 1
