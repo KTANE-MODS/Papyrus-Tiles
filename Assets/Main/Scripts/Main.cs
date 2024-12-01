@@ -1,5 +1,8 @@
-﻿using System.Collections;
+﻿using HarmonyLib;
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -69,12 +72,10 @@ public class Main : MonoBehaviour
 
     private Smell currentSmell;
 
-    private bool recursionAtGoal;
-    private Cell recursionCurrentCell;
-    private List<Cell> recursionCellList;
-    private List<Cell> recursionCellListSimplified;
+    private List<Cell> shortestPath;
+    private List<Cell> shortestPathSimplified;
 
-    private List<string> recursionDirections;
+
 
     static int ModuleIdCounter = 1;
     private int ModuleId;
@@ -151,36 +152,34 @@ public class Main : MonoBehaviour
             
         }
 
-        //color blind
-        if (colorBlindOn)
+       return FindShortestPath();
+    }
+
+    private void SetUpColorBlindText()
+    {
+        if (!colorBlindOn)
+            return;
+        foreach (Cell c in grid)
         {
-            foreach (Cell c in grid)
-            {
-                Transform parentTransform = c.Button.transform;
-                c.ColorBlidTextMesh = Instantiate(cbTextPrefab, parentTransform);
-                string color = c.GetColor();
-                c.ColorBlidTextMesh.text = color == "Pink" ? "I" : "" + color[0];
-            }
+            Transform parentTransform = c.Button.transform;
+            c.ColorBlidTextMesh = Instantiate(cbTextPrefab, parentTransform);
+            string color = c.GetColor();
+            c.ColorBlidTextMesh.text = color == "Pink" ? "I" : "" + color[0];
         }
-
-
-        GetThroughMaze();
-
-       return AtGoal();
     }
 
     void GenerateDebugMaze()
     {
 
         int[,] grid = new int[,]
-       {
-        {(int)Tile.Pink,(int)Tile.Purple ,(int)Tile.Yellow ,(int)Tile.Yellow,(int)Tile.Orange ,(int)Tile.Red ,(int)Tile.Pink ,(int)Tile.Blue },
-        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Purple ,(int)Tile.Pink ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Blue },
-        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Green ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Purple ,(int)Tile.Orange },
-        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Red ,(int)Tile.Blue ,(int)Tile.Pink ,(int)Tile.Green },
-        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Purple ,(int)Tile.Green ,(int)Tile.Blue ,(int)Tile.Orange ,(int)Tile.Orange },
-        {(int)Tile.Blue,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Orange ,(int)Tile.Orange ,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Red },
-       };
+        {
+           {(int)Tile.Red,(int)Tile.Green ,(int)Tile.Blue ,(int)Tile.Yellow ,(int)Tile.Yellow ,(int)Tile.Red ,(int)Tile.Green ,(int)Tile.Pink },
+            {(int)Tile.Blue,(int)Tile.Orange ,(int)Tile.Green ,(int)Tile.Pink ,(int)Tile.Green ,(int)Tile.Purple ,(int)Tile.Orange ,(int)Tile.Red },
+            {(int)Tile.Red,(int)Tile.Purple ,(int)Tile.Purple ,(int)Tile.Blue ,(int)Tile.Blue ,(int)Tile.Orange ,(int)Tile.Pink ,(int)Tile.Red },
+            {(int)Tile.Orange,(int)Tile.Green ,(int)Tile.Yellow ,(int)Tile.Red ,(int)Tile.Red ,(int)Tile.Red ,(int)Tile.Yellow ,(int)Tile.Blue },
+            {(int)Tile.Yellow,(int)Tile.Pink ,(int)Tile.Yellow ,(int)Tile.Red ,(int)Tile.Yellow ,(int)Tile.Purple ,(int)Tile.Red ,(int)Tile.Red },
+            {(int)Tile.Pink,(int)Tile.Green ,(int)Tile.Red ,(int)Tile.Blue ,(int)Tile.Red ,(int)Tile.Orange ,(int)Tile.Pink ,(int)Tile.Red },
+        };
 
         /*
         int[,] grid2 = new int[,]
@@ -204,8 +203,7 @@ public class Main : MonoBehaviour
         }
 
         SetNeighbors();
-
-        GetThroughMaze();
+        FindShortestPath();
     }
 
     Cell FindPlayer()
@@ -258,466 +256,6 @@ public class Main : MonoBehaviour
         {
             heart.transform.localPosition = new Vector3(finalDestination.x, oldHeartPosition.y, finalDestination.z);
         }  
-    }
-
-
-    void GetThroughMaze()
-    {
-        List<Cell> startingCells = new List<Cell>();
-        List<Cell> endingCells = new List<Cell>();
-
-        for (int i = 0; i < 6; i++)
-        {
-            if (grid[i, 0].Tile.ToString() != "Red")
-            {
-                startingCells.Add(grid[i, 0]);
-            }
-
-            if (grid[i, 7].Tile.ToString() != "Red")
-            {
-                endingCells.Add(grid[i, 7]);
-            }
-        }
-
-        bool foundPath = false;
-
-        for (int startIndex = 0; startIndex < startingCells.Count; startIndex++)
-        {
-            for (int endIndex = 0; endIndex < endingCells.Count; endIndex++)
-            {
-                Cell start = startingCells[startIndex];
-                Cell end = endingCells[endIndex];
-
-                foundPath = FindPathRecursion(start, end);
-
-                if (foundPath)
-                {
-                    //check to see if the path has duplicate cells if it does, the found path should not be true.
-                    //this is more of a logic error with the path finding since it's using recursion
-                    //Best way to avoid this is to use an algorithm that uses shortest path
-                    if (recursionCellList.Count != recursionCellList.Distinct().Count())
-                    {
-                        foundPath = false;
-                    }
-
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
-
-            if (foundPath)
-            {
-                break;
-            }
-        }
-
-        recursionCellListSimplified = SimplifyAnswer(recursionCellList);
-    }
-
-    bool FindPathRecursion(Cell start, Cell end)
-    {
-        recursionDirections = new List<string>();
-        recursionCellList = new List<Cell>();
-        recursionAtGoal = false;
-
-        foreach (Cell c in grid)
-        {
-            c.Visited = false;
-            c.Valid = c.Tile != Tile.Red;
-        }
-
-        recursionCurrentCell = start;
-        recursionCellList.Add(start);
-
-        if (MoveEast(end) || MoveSouth(end) || MoveWest(end) || MoveNorth(end))
-        {
-            return true;
-        }
-
-        else
-        {
-            if(printDebugLines)
-                Debug.Log($"Could not find path from {start} to {end}");
-            return false;
-        }
-
-    }
-
-    bool MoveNorth(Cell end)
-    {
-        //if we can move up, and we didnt move done before, go up
-
-        Cell next = recursionCurrentCell.Up;
-
-        if (printDebugLines)
-            Debug.Log($"Attempting to move up to {next}\n");
-
-
-
-        bool validPathMovingNorth = false;
-        bool checkValidity = false;
-        if (next != null && (recursionDirections.Count == 0 || recursionDirections.Last() != "DOWN") && next.Valid && UnVistedNonPurpleCell(next))
-        {
-            recursionCurrentCell = recursionCurrentCell.Up;
-            recursionDirections.Add("UP");
-            recursionCellList.Add(recursionCurrentCell);
-            if (printDebugLines)
-                Debug.Log($"Now at {next}\n");
-
-            //check to see if this is valid path so far
-            validPathMovingNorth = ValidPath(recursionCellList);
-            checkValidity = true;
-        }
-
-        //if he player is at the goal, set goal as true
-        if (AtGoal(end) && validPathMovingNorth)
-        {
-            recursionAtGoal = true;
-        }
-
-        else
-        {
-            //only continue to go up if path is valid
-            if (validPathMovingNorth)
-            {
-                recursionAtGoal = MoveNorth(end);
-
-                //if movig north doesn't work, move east
-                if (!recursionAtGoal)
-                {
-                    recursionAtGoal = MoveEast(end);
-
-                    //if moving east doesn't work, move south
-                    if (!recursionAtGoal)
-                    {
-                        recursionAtGoal = MoveSouth(end);
-
-                        //if moving south doesn't work, move west
-                        if (!recursionAtGoal)
-                        {
-                            recursionAtGoal = MoveWest(end);
-
-                            //if moving west doesn't work, mark this position as
-                            //unavailable and move back south
-                            if (!recursionAtGoal)
-                            {
-                                if (printDebugLines)
-                                    Debug.Log($"Up doesn't lead anywhere. Moving back down.\n");
-                                recursionCurrentCell.Valid = false;
-                                recursionCurrentCell = recursionCurrentCell.Down;
-                                recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                                recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            //otherwise, go back down and say you couldnt go north
-            else
-            {
-                if (checkValidity)
-                {
-                    recursionAtGoal = false;
-                    recursionCurrentCell = recursionCurrentCell.Down;
-                    recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                    recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                }
-
-                if (printDebugLines)
-                    Debug.Log($"Moving up lead to an invalid path. Going back down to {recursionCurrentCell}\n");
-            }
-        }
-
-        return recursionAtGoal;
-    }
-
-    bool MoveEast(Cell end)
-    {
-        //if we can move east, and we didnt move west before, go east
-        Cell next = recursionCurrentCell.Right;
-        if (printDebugLines)
-            Debug.Log($"Attempting to move right to {next}\n");
-
-
-        bool validPathMovingEast = false;
-        bool checkValidity = false;
-
-        if (next != null && (recursionDirections.Count == 0 || recursionDirections.Last() != "LEFT") && next.Valid && UnVistedNonPurpleCell(next))
-        {
-            recursionCurrentCell = recursionCurrentCell.Right;
-            recursionDirections.Add("RIGHT");
-            recursionCellList.Add(recursionCurrentCell);
-            if (printDebugLines)
-                Debug.Log($"Now at {next}\n");
-
-            //check to see if this is valid path so far
-            validPathMovingEast = ValidPath(recursionCellList);
-            checkValidity = true;
-
-        }
-
-        //if he player is at the goal, set goal as true
-        if (AtGoal(end) && validPathMovingEast)
-        {
-            recursionAtGoal = true;
-        }
-
-        else
-        {
-            //only continue to go east if path is valid
-            if (validPathMovingEast)
-            {
-                recursionAtGoal = MoveEast(end);
-
-                //if movig east doesn't work, move south
-                if (!recursionAtGoal)
-                {
-                    recursionAtGoal = MoveSouth(end);
-
-                    //if moving south doesn't work, move west
-                    if (!recursionAtGoal)
-                    {
-                        recursionAtGoal = MoveWest(end);
-
-                        //if moving west doesn't work, move north
-                        if (!recursionAtGoal)
-                        {
-                            recursionAtGoal = MoveNorth(end);
-
-                            //if moving east doesn't work, mark this position as
-                            //unavailable and move back west
-                            if (!recursionAtGoal)
-                            {
-                                if (printDebugLines)
-                                    Debug.Log($"Right doesn't lead anywhere. Moving back Left.\n");
-
-                                recursionCurrentCell.Valid = false;
-                                recursionCurrentCell = recursionCurrentCell.Left;
-                                recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                                recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            //otherwise, go back weast and say you couldnt go east
-            else
-            {
-                if (checkValidity)
-                {
-                    recursionAtGoal = false;
-                    recursionCurrentCell = recursionCurrentCell.Left;
-                    recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                    recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                }
-
-                if (printDebugLines)
-                    Debug.Log($"Moving right lead to an invalid path. Going back left to {recursionCurrentCell}\n");
-            }
-        }
-
-        return recursionAtGoal;
-    }
-
-    bool MoveSouth(Cell end)
-    {
-        //if we can move south, and we didnt move north before, go south
-        Cell next = recursionCurrentCell.Down;
-        if (printDebugLines)
-            Debug.Log($"Attempting to move down to {next}\n");
-
-        bool validPathMovingSouth = false;
-        bool checkValidity = false;
-
-        if (next != null && (recursionDirections.Count == 0 || recursionDirections.Last() != "UP") && next.Valid && UnVistedNonPurpleCell(next))
-        {
-            recursionCurrentCell = recursionCurrentCell.Down;
-            recursionDirections.Add("DOWN");
-            recursionCellList.Add(recursionCurrentCell);
-            if (printDebugLines)
-                Debug.Log($"Now at {next}\n");
-            //check to see if this is valid path so far
-            validPathMovingSouth = ValidPath(recursionCellList);
-            checkValidity = true;
-        }
-
-        //if he player is at the goal, set goal as true
-        if (AtGoal(end) && validPathMovingSouth)
-        {
-            recursionAtGoal = true;
-        }
-
-        else
-        {
-            //only continue to go south if path is valid
-            if (validPathMovingSouth)
-            {
-                recursionAtGoal = MoveSouth(end);
-
-                //if movig south doesn't work, move west
-                if (!recursionAtGoal)
-                {
-                    recursionAtGoal = MoveWest(end);
-
-                    //if moving west doesn't work, move north
-                    if (!recursionAtGoal)
-                    {
-                        recursionAtGoal = MoveNorth(end);
-
-                        //if moving north doesn't work, move east
-                        if (!recursionAtGoal)
-                        {
-                            recursionAtGoal = MoveEast(end);
-
-                            //if moving east doesn't work, mark this position as
-                            //unavailable and move back north
-                            if (!recursionAtGoal)
-                            {
-                                if (printDebugLines)
-                                    Debug.Log($"Down doesn't lead anywhere. Moving back up.\n");
-
-                                recursionCurrentCell.Valid = false;
-                                recursionCurrentCell = recursionCurrentCell.Up;
-                                recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                                recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            //otherwise, go back north and say you couldnt go south
-            else
-            {
-                if (checkValidity)
-                {
-                    recursionAtGoal = false;
-                    recursionCurrentCell = recursionCurrentCell.Up;
-                    recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                    recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                }
-
-                if (printDebugLines)
-                    Debug.Log($"Moving down lead to an invalid path. Going back up to {recursionCurrentCell}\n");
-            }
-        }
-
-        return recursionAtGoal;
-    }
-
-    bool MoveWest(Cell end)
-    {
-        //if we can move west, and we didnt move east before, go west
-        Cell next = recursionCurrentCell.Left;
-
-        if (printDebugLines)
-            Debug.Log($"Attempting to move left to {next}\n");
-
-        bool validPathMovingWest = false;
-        bool checkValidity = false;
-        if (next != null && (recursionDirections.Count == 0 || recursionDirections.Last() != "RIGHT") && next.Valid && UnVistedNonPurpleCell(next))
-        {
-            recursionCurrentCell = recursionCurrentCell.Left;
-            recursionDirections.Add("LEFT");
-            recursionCellList.Add(recursionCurrentCell);
-            if (printDebugLines)
-                Debug.Log($"Now at {next}\n");
-            //check to see if this is valid path so far
-            validPathMovingWest = ValidPath(recursionCellList);
-            checkValidity = true;
-        }
-
-        //if he player is at the goal, set goal as true
-        if (AtGoal(end) && validPathMovingWest)
-        {
-            recursionAtGoal = true;
-        }
-
-        else
-        {
-            //only continue to go west if path is valid
-            if (validPathMovingWest)
-            {
-                recursionAtGoal = MoveWest(end);
-
-                //if movig west doesn't work, move north
-                if (!recursionAtGoal)
-                {
-                    recursionAtGoal = MoveNorth(end);
-
-                    //if moving north doesn't work, move east
-                    if (!recursionAtGoal)
-                    {
-                        recursionAtGoal = MoveEast(end);
-
-                        //if moving east doesn't work, move south
-                        if (!recursionAtGoal)
-                        {
-                            recursionAtGoal = MoveSouth(end);
-
-                            //if moving south doesn't work, mark this position as
-                            //unavailable and move back east
-                            if (!recursionAtGoal)
-                            {
-                                if (printDebugLines)
-                                    Debug.Log($"Left doesn't lead anywhere. Moving back right.\n");
-
-                                recursionCurrentCell.Valid = false;
-                                recursionCurrentCell = recursionCurrentCell.Right;
-                                recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                                recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            //otherwise, go back east and say you couldnt go west
-            else
-            {
-                if (checkValidity)
-                {
-                    recursionAtGoal = false;
-                    recursionCurrentCell = recursionCurrentCell.Right;
-                    recursionDirections.RemoveAt(recursionDirections.Count - 1);
-                    recursionCellList.RemoveAt(recursionCellList.Count - 1);
-                }
-
-                if (printDebugLines)
-                    Debug.Log($"Moving left lead to an invalid path. Going back right to {recursionCurrentCell}\n");
-            }
-        }
-
-        return recursionAtGoal;
-    }
-
-    bool UnVistedNonPurpleCell(Cell c)
-    {
-        if (!recursionCellList.Contains(c))
-        {
-            return true;
-        }
-
-        if (recursionCellList.Contains(c) && c.Tile == Tile.Purple)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    bool AtGoal(Cell end)
-    {
-        return recursionCellList.Contains(end);
-    }
-
-    bool AtGoal()
-    {
-        return recursionCellList.Any(x => x.Col == 7);
     }
 
     bool ValidPath(List<Cell> path)
@@ -1316,14 +854,6 @@ public class Main : MonoBehaviour
             {
                 count++;
                 validMaze = GenerateMaze();
-
-                if (colorBlindOn && !validMaze)
-                {
-                    foreach (Cell c in grid)
-                    {
-                        Destroy(c.ColorBlidTextMesh.gameObject);
-                    }
-                }
             } while (!validMaze && count < 100);
 
             if (count == 100 && !validMaze)
@@ -1348,14 +878,51 @@ public class Main : MonoBehaviour
             GenerateDebugMaze();
             SetNeighbors();
         }
+
+        SetUpColorBlindText();
+
         gridGameObject.SetActive(true);
         fightingGameObjects.SetActive(false);
         pressable = true;
         fightingMonster = false;
         LogGrid();
-        Logging($"Final Answer: " + LogList(recursionCellList));
-        Logging($"Simplified Answer: " + LogList(recursionCellListSimplified));
 
+        Logging($"Final Answer: {LogList(shortestPath)}");
+    }
+
+    /// <summary>
+    /// Finds the shortest path trhough the maze
+    /// </summary>
+    /// <returns>true if a path was found</returns>
+    private bool FindShortestPath()
+    {
+        List<List<Cell>> paths = new List<List<Cell>>();
+
+        for (int startRow = 0; startRow < 6; startRow++)
+        {
+            for (int endRow = 0; endRow < 6; endRow++)
+            {
+                paths.Add(PathFinder.FindPath(grid[startRow, 0], grid[endRow, 7]));
+            }
+        }
+
+        //find the shortest paths (remove empty lists)
+        List<Cell> shortestPath = paths.Where(p => p.Count > 0).OrderBy(p => p.Count).FirstOrDefault();
+
+        if (shortestPath != null)
+        {
+            //if there are multiple paths that have the shortest path, choose the one that has the least amount of green tiles
+            List<List<Cell>> shortestPaths = paths.Where(p => p.Count == shortestPath.Count).ToList();
+
+            List<Cell> shortestGreenPath = shortestPaths.OrderBy(p => p.Count).FirstOrDefault().ToList();
+
+            this.shortestPath = shortestGreenPath;
+            shortestPathSimplified = SimplifyAnswer(shortestGreenPath);
+
+            return true;
+        }
+
+        return false;
     }
 
     void SetSmell(Smell smell)
@@ -1583,7 +1150,7 @@ public class Main : MonoBehaviour
         focused = true;
         yield return ProcessTwitchCommand("Reset");
 
-        foreach (Cell c in recursionCellListSimplified)
+        foreach (Cell c in shortestPathSimplified)
         {
             string s = c.ToString().Replace("(","").Replace(")", "");
             yield return ProcessTwitchCommand(s);
